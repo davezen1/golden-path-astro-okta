@@ -10,7 +10,7 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@okta/okta-auth-js": "^7.8.1",
+    "@okta/okta-auth-js": "^7.14.0",
     "astro": "^5.14.7"
   },
   "devDependencies": {
