@@ -79,6 +79,22 @@ npm run dev
 
 The application will be available at `http://localhost:4321`
 
+### Diagnostics Tool
+
+If you encounter authentication issues, visit the diagnostics page:
+
+```
+http://localhost:4321/diagnostics
+```
+
+This tool will automatically:
+- Check environment variable configuration
+- Verify redirect URI matches current URL
+- Test connectivity to your Okta domain
+- Provide detailed troubleshooting guidance
+
+The diagnostics will also run automatically in the browser console on the main page.
+
 ## Building for Production
 
 Build the static site:
@@ -126,9 +142,11 @@ npm run preview
 /
 ├── src/
 │   ├── pages/
-│   │   └── index.astro          # Main page with auth logic
+│   │   ├── index.astro          # Main page with auth logic
+│   │   └── diagnostics.astro    # Configuration diagnostics tool
 │   ├── lib/
-│   │   └── okta-config.ts       # Okta client configuration
+│   │   ├── okta-config.ts       # Okta client configuration
+│   │   └── cors-checker.ts      # Configuration checker utility
 │   └── env.d.ts                 # TypeScript environment types
 ├── public/
 │   └── styles.css               # CSS styles
@@ -170,6 +188,18 @@ The Okta client is configured in `src/lib/okta-config.ts`:
 - **Token storage**: sessionStorage (tokens cleared when browser closes)
 
 ## Troubleshooting
+
+### Using the Diagnostics Tool
+
+**First step:** Visit `/diagnostics` to run automated configuration checks.
+
+The tool will verify:
+- Environment variables are properly set
+- Redirect URI matches current URL
+- Okta domain is reachable
+- HTTPS requirements (for production)
+
+Check the browser console for detailed diagnostic output.
 
 ### "Invalid redirect_uri"
 - Ensure the redirect URI in your `.env` file exactly matches what's configured in your Okta application

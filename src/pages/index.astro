@@ -57,6 +57,7 @@
 
   <script>
     import { oktaAuth, getUserInfo, isAuthenticated, login, logout, handleLoginCallback } from '../lib/okta-config';
+    import { checkOktaConfiguration, printConfigChecks } from '../lib/cors-checker';
 
     // DOM elements
     const loadingEl = document.getElementById('loading')!;
@@ -111,6 +112,20 @@
     async function checkAuth() {
       try {
         showState('loading');
+
+        // Run configuration checks on first load
+        if (!sessionStorage.getItem('configChecked')) {
+          const configChecks = await checkOktaConfiguration();
+          printConfigChecks(configChecks);
+          sessionStorage.setItem('configChecked', 'true');
+
+          // If there are critical failures, show error
+          const failures = configChecks.filter(c => c.status === 'fail');
+          if (failures.length > 0) {
+            showError(`Configuration error: ${failures[0].message}. Check browser console for details.`);
+            return;
+          }
+        }
 
         // Handle callback if returning from Okta
         if (oktaAuth.isLoginRedirect()) {

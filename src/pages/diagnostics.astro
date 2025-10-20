@@ -1,0 +1,217 @@
+---
+// Diagnostics page for troubleshooting Okta configuration
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Okta Configuration Diagnostics</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .diagnostic-results {
+      margin-top: 20px;
+    }
+    .check-item {
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 6px;
+      border-left: 4px solid #ccc;
+    }
+    .check-item.pass {
+      background: #e8f5e9;
+      border-left-color: #4caf50;
+    }
+    .check-item.fail {
+      background: #ffebee;
+      border-left-color: #f44336;
+    }
+    .check-item.warning {
+      background: #fff3e0;
+      border-left-color: #ff9800;
+    }
+    .check-name {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .check-message {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    .tips-section {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f8f8f8;
+      border-radius: 6px;
+    }
+    .tip-section {
+      margin: 15px 0;
+    }
+    .tip-section h3 {
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+    .tip-section pre {
+      background: white;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+    }
+    .run-checks-btn {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Okta Configuration Diagnostics</h1>
+      <p class="subtitle">Check your setup before attempting authentication</p>
+    </header>
+
+    <main>
+      <div class="card">
+        <h2>Configuration Checker</h2>
+        <p>This tool will verify your Okta configuration and help diagnose common issues.</p>
+
+        <button id="run-checks" class="btn btn-primary run-checks-btn">Run Diagnostics</button>
+
+        <div id="results" class="diagnostic-results"></div>
+      </div>
+
+      <div class="tips-section">
+        <h2>Common Issues & Solutions</h2>
+
+        <div class="tip-section">
+          <h3>CORS Errors</h3>
+          <pre>1. Go to Okta Admin Console > Security > API > Trusted Origins
+2. Click "Add Origin"
+3. Add your origin URL (e.g., http://localhost:4321)
+4. Select both "CORS" and "Redirect"
+5. Save</pre>
+        </div>
+
+        <div class="tip-section">
+          <h3>Redirect URI Mismatch</h3>
+          <pre>1. Ensure .env PUBLIC_OKTA_REDIRECT_URI matches current URL
+2. Add the URI to Okta app's "Sign-in redirect URIs"
+3. Rebuild app after changing .env (npm run build)</pre>
+        </div>
+
+        <div class="tip-section">
+          <h3>User Not Assigned Error</h3>
+          <pre>1. Go to your Okta application
+2. Navigate to the "Assignments" tab
+3. Assign yourself or your group to the application</pre>
+        </div>
+
+        <div class="tip-section">
+          <h3>Invalid Domain</h3>
+          <pre>Format: dev-123456.okta.com
+- Do NOT include https://
+- Do NOT include paths like /oauth2/default
+- Use your actual Okta domain</pre>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 30px;">
+        <a href="/" class="btn btn-secondary">Back to Main Page</a>
+      </div>
+    </main>
+
+    <footer>
+      <p>Diagnostics Tool | <a href="/">Back to App</a></p>
+    </footer>
+  </div>
+
+  <script>
+    import { checkOktaConfiguration } from '../lib/cors-checker';
+
+    const runChecksBtn = document.getElementById('run-checks')! as HTMLButtonElement;
+    const resultsEl = document.getElementById('results')!;
+
+    runChecksBtn.addEventListener('click', async () => {
+      runChecksBtn.textContent = 'Running diagnostics...';
+      runChecksBtn.disabled = true;
+      resultsEl.innerHTML = '<p>Checking configuration...</p>';
+
+      try {
+        const checks = await checkOktaConfiguration();
+
+        let html = '<h3 style="margin-top: 20px;">Results:</h3>';
+
+        checks.forEach(check => {
+          const statusClass = check.status;
+          const icon = check.status === 'pass' ? '✅' : check.status === 'fail' ? '❌' : '⚠️';
+
+          html += `
+            <div class="check-item ${statusClass}">
+              <div class="check-name">${icon} ${check.name}</div>
+              <div class="check-message">${check.message}</div>
+            </div>
+          `;
+        });
+
+        const failures = checks.filter(c => c.status === 'fail').length;
+        const warnings = checks.filter(c => c.status === 'warning').length;
+        const passes = checks.filter(c => c.status === 'pass').length;
+
+        html += `
+          <div style="margin-top: 20px; padding: 15px; background: ${failures > 0 ? '#ffebee' : warnings > 0 ? '#fff3e0' : '#e8f5e9'}; border-radius: 6px;">
+            <strong>Summary:</strong><br>
+            ✅ ${passes} passed | ⚠️ ${warnings} warnings | ❌ ${failures} failed
+          </div>
+        `;
+
+        if (failures > 0) {
+          html += `
+            <div style="margin-top: 15px; padding: 15px; background: #ffebee; border-radius: 6px; border-left: 4px solid #f44336;">
+              <strong>⚠️ Action Required:</strong> Please fix the configuration errors above before attempting to authenticate.
+            </div>
+          `;
+        } else if (warnings > 0) {
+          html += `
+            <div style="margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 6px; border-left: 4px solid #ff9800;">
+              <strong>⚠️ Note:</strong> Authentication may still work, but you might encounter issues.
+            </div>
+          `;
+        } else {
+          html += `
+            <div style="margin-top: 15px; padding: 15px; background: #e8f5e9; border-radius: 6px; border-left: 4px solid #4caf50;">
+              <strong>✅ Ready:</strong> Your configuration looks good! You can try authenticating.
+            </div>
+          `;
+        }
+
+        resultsEl.innerHTML = html;
+
+        // Also log to console
+        console.group('🔍 Detailed Diagnostics');
+        checks.forEach(check => {
+          const style = check.status === 'pass' ? 'color: green' : check.status === 'fail' ? 'color: red' : 'color: orange';
+          console.log(`%c${check.name}: ${check.message}`, style);
+        });
+        console.groupEnd();
+
+      } catch (error) {
+        resultsEl.innerHTML = `
+          <div class="check-item fail">
+            <div class="check-name">❌ Diagnostic Error</div>
+            <div class="check-message">Failed to run diagnostics: ${error instanceof Error ? error.message : 'Unknown error'}</div>
+          </div>
+        `;
+      } finally {
+        runChecksBtn.textContent = 'Run Diagnostics Again';
+        runChecksBtn.disabled = false;
+      }
+    });
+
+    // Auto-run on page load
+    window.addEventListener('load', () => {
+      runChecksBtn.click();
+    });
+  </script>
+</body>
+</html>
