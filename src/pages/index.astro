@@ -1,0 +1,169 @@
+---
+// No server-side processing for static Astro build
+---
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Astro + Okta Reference App</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Astro + Okta Reference Application</h1>
+      <p class="subtitle">Simple static authentication with OAuth 2.0 + PKCE</p>
+    </header>
+
+    <main>
+      <div id="loading" class="auth-state">
+        <p>Checking authentication status...</p>
+      </div>
+
+      <div id="unauthenticated" class="auth-state" style="display: none;">
+        <div class="card">
+          <h2>Welcome</h2>
+          <p>You are not currently signed in.</p>
+          <button id="login-btn" class="btn btn-primary">Sign In with Okta</button>
+        </div>
+      </div>
+
+      <div id="authenticated" class="auth-state" style="display: none;">
+        <div class="card">
+          <h2>Welcome, <span id="user-name">User</span>!</h2>
+          <div class="user-info">
+            <p><strong>Email:</strong> <span id="user-email">—</span></p>
+            <p><strong>Status:</strong> <span class="badge">Authenticated</span></p>
+          </div>
+          <button id="logout-btn" class="btn btn-secondary">Sign Out</button>
+        </div>
+      </div>
+
+      <div id="error" class="auth-state error-message" style="display: none;">
+        <div class="card">
+          <h2>Authentication Error</h2>
+          <p id="error-text">An error occurred during authentication.</p>
+          <button id="retry-btn" class="btn btn-primary">Try Again</button>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>Built with Astro and Okta Auth JS | Static deployment ready</p>
+    </footer>
+  </div>
+
+  <script>
+    import { oktaAuth, getUserInfo, isAuthenticated, login, logout, handleLoginCallback } from '../lib/okta-config';
+
+    // DOM elements
+    const loadingEl = document.getElementById('loading')!;
+    const unauthenticatedEl = document.getElementById('unauthenticated')!;
+    const authenticatedEl = document.getElementById('authenticated')!;
+    const errorEl = document.getElementById('error')!;
+    const errorTextEl = document.getElementById('error-text')!;
+
+    const loginBtn = document.getElementById('login-btn')!;
+    const logoutBtn = document.getElementById('logout-btn')!;
+    const retryBtn = document.getElementById('retry-btn')!;
+
+    const userNameEl = document.getElementById('user-name')!;
+    const userEmailEl = document.getElementById('user-email')!;
+
+    // Show only one state at a time
+    function showState(state: 'loading' | 'unauthenticated' | 'authenticated' | 'error') {
+      loadingEl.style.display = 'none';
+      unauthenticatedEl.style.display = 'none';
+      authenticatedEl.style.display = 'none';
+      errorEl.style.display = 'none';
+
+      switch (state) {
+        case 'loading':
+          loadingEl.style.display = 'block';
+          break;
+        case 'unauthenticated':
+          unauthenticatedEl.style.display = 'block';
+          break;
+        case 'authenticated':
+          authenticatedEl.style.display = 'block';
+          break;
+        case 'error':
+          errorEl.style.display = 'block';
+          break;
+      }
+    }
+
+    // Display user information
+    function displayUserInfo(user: any) {
+      userNameEl.textContent = user.name || user.preferred_username || 'User';
+      userEmailEl.textContent = user.email || '—';
+    }
+
+    // Show error message
+    function showError(message: string) {
+      errorTextEl.textContent = message;
+      showState('error');
+    }
+
+    // Check authentication and update UI
+    async function checkAuth() {
+      try {
+        showState('loading');
+
+        // Handle callback if returning from Okta
+        if (oktaAuth.isLoginRedirect()) {
+          await handleLoginCallback();
+        }
+
+        // Check if authenticated
+        const authenticated = await isAuthenticated();
+
+        if (authenticated) {
+          const user = await getUserInfo();
+          if (user) {
+            displayUserInfo(user);
+            showState('authenticated');
+          } else {
+            showState('unauthenticated');
+          }
+        } else {
+          showState('unauthenticated');
+        }
+      } catch (error) {
+        console.error('Authentication check failed:', error);
+        showError(error instanceof Error ? error.message : 'An unexpected error occurred');
+      }
+    }
+
+    // Event listeners
+    loginBtn.addEventListener('click', async () => {
+      try {
+        await login();
+      } catch (error) {
+        console.error('Login failed:', error);
+        showError('Login failed. Please try again.');
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        showState('loading');
+        await logout();
+        showState('unauthenticated');
+      } catch (error) {
+        console.error('Logout failed:', error);
+        showError('Logout failed. Please try again.');
+      }
+    });
+
+    retryBtn.addEventListener('click', () => {
+      checkAuth();
+    });
+
+    // Initialize on page load
+    checkAuth();
+  </script>
+</body>
+</html>
