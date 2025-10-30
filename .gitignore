@@ -25,3 +25,8 @@ pnpm-debug.log*
 *.swp
 *.swo
 *~
+
+# Elastic Beanstalk
+.elasticbeanstalk/*
+!.elasticbeanstalk/config.yml
+*.elasticbeanstalk.log

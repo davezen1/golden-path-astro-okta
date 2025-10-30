@@ -111,7 +111,123 @@ Preview the production build locally:
 npm run preview
 ```
 
-## Deployment to AWS S3
+## Deployment Options
+
+### Option 1: AWS Elastic Beanstalk with Docker (Recommended)
+
+This option deploys the application as a Docker container to AWS Elastic Beanstalk, providing easier management, auto-scaling, and monitoring.
+
+#### Prerequisites
+- AWS CLI installed and configured
+- EB CLI installed (`pip install awsebcli`)
+- Docker installed (for local testing)
+
+#### Local Docker Testing
+
+1. **Test with docker-compose**:
+   ```bash
+   # Build and run the container
+   docker-compose up --build
+
+   # Access at http://localhost:8080
+   ```
+
+2. **Or test with Docker directly**:
+   ```bash
+   # Build the image
+   docker build \
+     --build-arg PUBLIC_OKTA_DOMAIN=your-okta-domain.okta.com \
+     --build-arg PUBLIC_OKTA_CLIENT_ID=your-client-id \
+     --build-arg PUBLIC_OKTA_REDIRECT_URI=http://localhost:8080 \
+     -t astro-okta-app .
+
+   # Run the container
+   docker run -p 8080:80 astro-okta-app
+   ```
+
+#### Deploy to Elastic Beanstalk
+
+1. **Initialize EB application** (first time only):
+   ```bash
+   eb init
+   ```
+   - Choose your region (e.g., us-east-1)
+   - Application name: `astro-okta-app`
+   - Platform: Docker running on 64bit Amazon Linux 2023
+   - Select "no" for CodeCommit
+
+2. **Configure environment variables**:
+
+   Edit `.ebextensions/01_environment.config` with your Okta settings:
+   ```yaml
+   option_settings:
+     aws:elasticbeanstalk:application:environment:
+       PUBLIC_OKTA_DOMAIN: "your-okta-domain.okta.com"
+       PUBLIC_OKTA_CLIENT_ID: "your-client-id"
+       PUBLIC_OKTA_REDIRECT_URI: "https://your-app.elasticbeanstalk.com"
+   ```
+
+   Or set them via EB CLI:
+   ```bash
+   eb setenv \
+     PUBLIC_OKTA_DOMAIN=your-okta-domain.okta.com \
+     PUBLIC_OKTA_CLIENT_ID=your-client-id \
+     PUBLIC_OKTA_REDIRECT_URI=https://your-app.elasticbeanstalk.com
+   ```
+
+3. **Create and deploy environment**:
+   ```bash
+   # Create environment (first time)
+   eb create astro-okta-prod
+
+   # Or deploy to existing environment
+   eb deploy
+   ```
+
+4. **Get your application URL**:
+   ```bash
+   eb status
+   # Or open in browser
+   eb open
+   ```
+
+5. **Update Okta application**:
+   - In Okta Admin Console, add your EB URL to Sign-in redirect URIs
+   - Example: `https://astro-okta-prod.us-east-1.elasticbeanstalk.com`
+
+#### Managing Your EB Environment
+
+```bash
+# View logs
+eb logs
+
+# Check status
+eb status
+
+# SSH into instance
+eb ssh
+
+# Update environment variables
+eb setenv KEY=value
+
+# Terminate environment (WARNING: destroys resources)
+eb terminate
+```
+
+#### Optional: Configure HTTPS
+
+For production, enable HTTPS:
+
+1. **In AWS Console**:
+   - Go to EB environment → Configuration → Load balancer
+   - Add HTTPS listener on port 443
+   - Select or upload SSL certificate (via AWS Certificate Manager)
+
+2. **Configure custom domain** (optional):
+   - Add CNAME record pointing to EB URL
+   - Update Okta redirect URIs with your custom domain
+
+### Option 2: AWS S3 Static Hosting
 
 1. **Build the application**:
    ```bash
@@ -150,7 +266,16 @@ npm run preview
 │   └── env.d.ts                 # TypeScript environment types
 ├── public/
 │   └── styles.css               # CSS styles
+├── .elasticbeanstalk/
+│   └── config.yml               # EB CLI configuration
+├── .ebextensions/
+│   ├── 01_environment.config    # Environment variables config
+│   └── 02_https_redirect.config # HTTPS configuration (optional)
 ├── .env.example                 # Environment variable template
+├── Dockerfile                   # Docker build configuration
+├── docker-compose.yml           # Local Docker testing
+├── nginx.conf                   # Nginx web server configuration
+├── .dockerignore                # Docker build exclusions
 ├── astro.config.mjs             # Astro configuration
 ├── tsconfig.json                # TypeScript configuration
 └── package.json                 # Dependencies and scripts
