@@ -1,7 +1,7 @@
 # Multi-stage build for Astro static site
 
 # Stage 1: Build the Astro application
-FROM node:18-alpine AS builder
+FROM node:18-slim AS builder
 
 WORKDIR /app
 
