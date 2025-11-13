@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@okta/okta-auth-js": "^7.8.1",
-    "astro": "^5.14.7"
+    "astro": "^5.15.6"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.0",
